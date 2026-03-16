@@ -1,26 +1,31 @@
 import { useEffect, useState } from "react"
-import { getOrders } from "../../services/api"
-
+import { useAuth } from "../../context/AuthContext"
+import { getConsumerOrders } from "../../services/api"
+ 
 export default function Orders() {
-
+    const { user } = useAuth()
     const [orders, setOrders] = useState([])
-
+ 
     useEffect(() => {
-        getOrders().then(setOrders)
+        // ✅ fetch orders scoped to this consumer
+        getConsumerOrders(user.id).then(data => {
+            setOrders(Array.isArray(data) ? data : [])
+        })
     }, [])
-
+ 
     return (
         <div>
-
-            <h2>My orders</h2>
-
+            <h2>My Orders</h2>
+ 
+            {orders.length === 0 && <p>No orders yet.</p>}
+ 
             {orders.map(o => (
                 <div key={o.id}>
-                    Order {o.id} - {o.status}
+                    <p>Order #{o.id} — {o.status}</p>
+                    <p>Created: {new Date(o.created_at).toLocaleString()}</p>
                 </div>
             ))}
-
         </div>
     )
-
 }
+ 
