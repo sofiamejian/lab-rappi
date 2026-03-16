@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
  
-const API = "https://lab-rappi-f8xt.vercel.app/api"
+const API = "https://lab-rappi.onrender.com/api"
  
 export default function StoreDashboard() {
     const { user } = useAuth()
@@ -102,7 +102,6 @@ export default function StoreDashboard() {
                     />
                     <button type="submit">Add Product</button>
                 </form>
-                {/* ✅ fixed: was using string literal instead of template literal */}
                 <p>Manage Products <Link to="/store/products">Here</Link></p>
             </div>
  

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "../../context/AuthContext"
  
-const API = "https://lab-rappi-f8xt.vercel.app/api"
+const API = "https://lab-rappi.onrender.com/api"
  
 export default function MyOrders() {
     const { user } = useAuth()
@@ -12,7 +12,6 @@ export default function MyOrders() {
     }, [])
  
     async function loadMyOrders() {
-        // ✅ fetch orders assigned to this delivery user by their id
         const res = await fetch(`${API}/orders/delivery/${user.id}`)
         const data = await res.json()
         setOrders(Array.isArray(data) ? data : [])
