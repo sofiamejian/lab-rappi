@@ -2,32 +2,24 @@ import Boom from "@hapi/boom"
 import { supabase } from "../../config/supabase"
 
 export const getAvailableOrdersService = async () => {
+    const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("status", "pending") // ✅ replaces .is("delivery_id", null)
 
-  const { data, error } = await supabase
-    .from("orders")
-    .select("*")
-    .is("delivery_id", null)
-
-  if (error) {
-    throw Boom.badRequest(error.message)
-  }
-
-  return data
+    if (error) throw Boom.badRequest(error.message)
+    return data
 }
 
-export const acceptOrderService = async (
-  orderId: string,
-  deliveryId: string
-) => {
+export const acceptOrderService = async (orderId: string, deliveryId: string) => {
+    const { data, error } = await supabase
+        .from("orders")
+        .update({
+            delivery_id: deliveryId,
+            status: "accepted" // ✅ was missing
+        })
+        .eq("id", orderId)
 
-  const { data, error } = await supabase
-    .from("orders")
-    .update({ delivery_id: deliveryId })
-    .eq("id", orderId)
-
-  if (error) {
-    throw Boom.badRequest(error.message)
-  }
-
-  return data
+    if (error) throw Boom.badRequest(error.message)
+    return data
 }

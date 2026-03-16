@@ -37,3 +37,12 @@ export const createProductService = async (
 
   return data
 }
+
+export const deleteProductService = async (id: string) => {
+    const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", id)
+
+    if (error) throw Boom.badRequest(error.message)
+}
