@@ -20,7 +20,7 @@ export default function Stores() {
                 <div className="card" key={store.id}>
                     <h3>{store.name}</h3>
                     <p>{store.is_open ? "Open" : "Closed"}</p>
-                    {/* ✅ navigate to /products/:id on click */}
+                    
                     <button
                         onClick={() => navigate(`/products/${store.id}`)}
                         disabled={!store.is_open}

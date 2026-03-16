@@ -9,7 +9,7 @@ export default function Cart() {
     const [cart, setCart] = useState(null)
  
     useEffect(() => {
-        // ✅ read cart from localStorage
+
         const stored = JSON.parse(localStorage.getItem("cart"))
         setCart(stored)
     }, [])
@@ -23,7 +23,7 @@ export default function Cart() {
     async function handleCreateOrder() {
         if (!cart || cart.items.length === 0) return
  
-        // ✅ send consumer_id, store_id, and items (with unit_price snapshot)
+        
         await createOrder(
             user.id,
             cart.storeId,

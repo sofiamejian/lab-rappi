@@ -14,7 +14,7 @@ export default function Login() {
         try {
             const data = await login({ email, password })
  
-            // ✅ explicitly map fields so user.id is always at the top level
+            
             const user = {
                 id: data.id,
                 email: data.email,

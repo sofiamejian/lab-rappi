@@ -1,4 +1,4 @@
-const API = "http://localhost:3000/api"
+const API = "https://lab-rappi-f8xt.vercel.app/api"
  
 export const register = async (data) => {
     const res = await fetch(`${API}/auth/register`, {
@@ -32,25 +32,24 @@ export const getProducts = async (storeId) => {
     return res.json()
 }
  
-// Consumer: get their own orders
+
 export const getConsumerOrders = async (consumerId) => {
     const res = await fetch(`${API}/orders/consumer/${consumerId}`)
     return res.json()
 }
  
-// Store: get orders for their store
 export const getStoreOrders = async (storeId) => {
     const res = await fetch(`${API}/orders/store/${storeId}`)
     return res.json()
 }
  
-// Delivery: get pending orders
+
 export const getAvailableOrders = async () => {
     const res = await fetch(`${API}/orders/available`)
     return res.json()
 }
  
-// Delivery: get their accepted orders
+
 export const getMyDeliveries = async (deliveryId) => {
     const res = await fetch(`${API}/orders/delivery/${deliveryId}`)
     return res.json()

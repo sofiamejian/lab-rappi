@@ -14,7 +14,6 @@ export default function Products() {
     }, [storeId])
  
     function addToCart(product) {
-        // ✅ persist cart in localStorage: { storeId, items: [{id, name, price, quantity}] }
         const existing = JSON.parse(localStorage.getItem("cart")) || { storeId, items: [] }
  
         const itemIndex = existing.items.findIndex(i => i.id === product.id)
@@ -40,7 +39,7 @@ export default function Products() {
                     <div className="card" key={p.id}>
                         <h3>{p.name}</h3>
                         <p>${p.price}</p>
-                        {/* ✅ actually adds to cart */}
+                        {}
                         <button onClick={() => addToCart(p)}>Add to cart</button>
                     </div>
                 ))}

@@ -19,7 +19,7 @@ export default function StoreDashboard() {
     }, [])
  
     async function loadStore() {
-        // ✅ fetch the specific store for this user via user.store_id
+        
         const res = await fetch(`${API}/stores/${user.store_id}`)
         const data = await res.json()
         setStore(data)

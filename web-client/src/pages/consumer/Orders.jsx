@@ -7,7 +7,7 @@ export default function Orders() {
     const [orders, setOrders] = useState([])
  
     useEffect(() => {
-        // ✅ fetch orders scoped to this consumer
+        
         getConsumerOrders(user.id).then(data => {
             setOrders(Array.isArray(data) ? data : [])
         })
