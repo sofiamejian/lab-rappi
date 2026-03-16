@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
  
-const API = "http://localhost:3000/api"
+const API = "https://lab-rappi-f8xt.vercel.app/api"
  
 export default function StoreDashboard() {
     const { user } = useAuth()
