@@ -2,20 +2,12 @@ import { useEffect, useState, useRef } from "react"
 import { useAuth } from "../../context/AuthContext"
 import { getStoreOrders } from "../../services/api"
 import { supabase } from "../../services/supabaseClient"
-
-const STATUS_CONFIG = {
-  "Creado":     { color: "#f39c12", bg: "#fef9e7", label: "Creado",     emoji: "🟡" },
-  "En entrega": { color: "#2980b9", bg: "#eaf4fb", label: "En entrega", emoji: "🔵" },
-  "Entregado":  { color: "#27ae60", bg: "#eafaf1", label: "Entregado",  emoji: "🟢" },
-  // Legacy statuses from old implementation
-  "pending":    { color: "#f39c12", bg: "#fef9e7", label: "Pendiente",  emoji: "🟡" },
-  "accepted":   { color: "#2980b9", bg: "#eaf4fb", label: "En entrega", emoji: "🔵" },
-  "declined":   { color: "#e74c3c", bg: "#fdedec", label: "Rechazado",  emoji: "🔴" },
-}
+import { RefreshCw, Package, Clock, Calendar, ShoppingBag, Loader2 } from "lucide-react"
 
 export default function StoreOrders() {
   const { user } = useAuth()
   const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
   const channelRef = useRef(null)
 
   useEffect(() => {
@@ -27,12 +19,16 @@ export default function StoreOrders() {
   }, [])
 
   async function loadOrders() {
-    const data = await getStoreOrders(user.store_id)
-    setOrders(Array.isArray(data) ? data : [])
+    try {
+      setLoading(true)
+      const data = await getStoreOrders(user.store_id)
+      setOrders(Array.isArray(data) ? data : [])
+    } finally {
+      setLoading(false)
+    }
   }
 
   function subscribeToUpdates() {
-    // Subscribe to database changes on orders table for this store
     const channel = supabase
       .channel(`store-orders:${user.store_id}`)
       .on(
@@ -55,75 +51,102 @@ export default function StoreOrders() {
     channelRef.current = channel
   }
 
+  const counts = {
+    "Creado": orders.filter(o => o.status === "Creado").length,
+    "En entrega": orders.filter(o => o.status === "En entrega").length,
+    "Entregado": orders.filter(o => o.status === "Entregado").length,
+  }
+
   return (
-    <div style={{ padding: 20, maxWidth: 800, margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <h2 style={{ margin: 0 }}>Pedidos entrantes</h2>
+    <div>
+      <div className="page-header">
+        <div>
+          <h2>Pedidos de la Tienda</h2>
+          <p style={{ marginTop: 4 }}>Monitorea y gestiona tus pedidos entrantes</p>
+        </div>
         <button
           onClick={loadOrders}
-          style={{ width: "auto", padding: "6px 14px", background: "#555", fontSize: 13 }}
+          className="btn-secondary"
+          style={{ padding: "8px 16px" }}
         >
-          🔄 Actualizar
+          <RefreshCw size={16} /> Actualizar
         </button>
       </div>
 
-      {/* Summary badges */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
-        {["Creado", "En entrega", "Entregado"].map(status => {
-          const count = orders.filter(o => o.status === status).length
-          const cfg = STATUS_CONFIG[status]
-          return (
-            <div key={status} style={{
-              background: cfg.bg, border: `2px solid ${cfg.color}`, borderRadius: 10,
-              padding: "8px 16px", fontSize: 14, fontWeight: 600, color: cfg.color
-            }}>
-              {cfg.emoji} {cfg.label}: {count}
-            </div>
-          )
-        })}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 32 }}>
+        <div className="card" style={{ borderLeft: "4px solid var(--amber)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>Nuevos</div>
+          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{counts["Creado"]}</div>
+        </div>
+        <div className="card" style={{ borderLeft: "4px solid var(--blue)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>En Entrega</div>
+          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{counts["En entrega"]}</div>
+        </div>
+        <div className="card" style={{ borderLeft: "4px solid var(--green)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>Entregados</div>
+          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{counts["Entregado"]}</div>
+        </div>
       </div>
 
-      {orders.length === 0 && <p style={{ color: "#666" }}>Aún no hay pedidos.</p>}
-
-      {orders.map(o => {
-        const cfg = STATUS_CONFIG[o.status] || { color: "#999", bg: "#f5f5f5", label: o.status, emoji: "⚪" }
-        return (
-          <div key={o.id} style={{
-            background: "white", borderRadius: 10, padding: 16, marginBottom: 12,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-            borderLeft: `4px solid ${cfg.color}`,
-            transition: "border-color 0.3s"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div>
-                <p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>
-                  Pedido #{o.id.slice(0, 8)}…
-                </p>
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#888" }}>
-                  {new Date(o.created_at).toLocaleString()}
-                </p>
+      {loading ? (
+        <div className="empty">
+          <Loader2 className="empty-icon" style={{ animation: "spin 2s linear infinite" }} />
+          <p>Cargando pedidos…</p>
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="empty">
+          <ShoppingBag className="empty-icon" size={48} />
+          <p>Aún no has recibido ningún pedido</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {orders.map(o => (
+            <div key={o.id} className="card" style={{ 
+              borderLeft: `4px solid ${
+                o.status === "Entregado" ? "var(--green)" : 
+                o.status === "En entrega" ? "var(--blue)" : "var(--amber)"
+              }`
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Pedido #{o.id.slice(0, 8)}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, color: "var(--text-2)", fontSize: 13 }}>
+                    <Calendar size={14} /> {new Date(o.created_at).toLocaleDateString()}
+                    <Clock size={14} style={{ marginLeft: 8 }} /> {new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+                <span className={`badge ${
+                  o.status === "Entregado" ? "badge-entregado" : 
+                  o.status === "En entrega" ? "badge-entrega" : "badge-creado"
+                }`}>
+                  {o.status}
+                </span>
               </div>
-              <span style={{
-                background: cfg.bg, border: `1px solid ${cfg.color}`, color: cfg.color,
-                padding: "5px 12px", borderRadius: 20, fontSize: 13, fontWeight: 700,
-                whiteSpace: "nowrap"
-              }}>
-                {cfg.emoji} {cfg.label}
-              </span>
+
+              {o.order_items && o.order_items.length > 0 && (
+                <div style={{ background: "var(--bg-2)", borderRadius: "var(--radius-sm)", padding: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                    <Package size={14} /> Artículos del Pedido
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {o.order_items.map(item => (
+                      <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                        <span>
+                          <span style={{ fontWeight: 600 }}>{item.quantity}x</span> {item.products?.name || "Producto"}
+                        </span>
+                        <span style={{ color: "var(--text-2)", fontFamily: "var(--mono)" }}>${item.unit_price.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-
-            {o.order_items && o.order_items.length > 0 && (
-              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #f0f0f0" }}>
-                {o.order_items.map(item => (
-                  <p key={item.id} style={{ margin: "2px 0", fontSize: 13, color: "#555" }}>
-                    • {item.products?.name || "Producto"} × {item.quantity} — ${item.unit_price}
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
-        )
-      })}
+          ))}
+        </div>
+      )}
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }

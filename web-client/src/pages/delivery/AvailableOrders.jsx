@@ -5,7 +5,9 @@ import { supabase } from "../../services/supabaseClient"
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
+import { Truck, MapPin, Navigation, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Package, Loader2 } from "lucide-react"
 
+// Fix default icons
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
@@ -42,27 +44,30 @@ function parseGeoPoint(geo) {
 export default function AvailableOrders() {
   const { user } = useAuth()
   const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
   const [acceptedOrder, setAcceptedOrder] = useState(null)
   const [position, setPosition] = useState(null)
   const [arrived, setArrived] = useState(false)
-  const [hint, setHint] = useState("")
   const mapRef = useRef(null)
-  const positionRef = useRef(null) // keep latest position for keyboard handler
+  const positionRef = useRef(null)
 
   useEffect(() => {
     loadOrders()
   }, [])
 
   async function loadOrders() {
-    const data = await getAvailableOrders()
-    setOrders(Array.isArray(data) ? data : [])
+    try {
+      setLoading(true)
+      const data = await getAvailableOrders()
+      setOrders(Array.isArray(data) ? data : [])
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleAccept(order) {
     try {
       await acceptOrder(order.id, user.id)
-
-      // Start at a default position near Bogotá (or use browser geolocation)
       const startPos = { lat: 4.711, lng: -74.0721 }
 
       if (navigator.geolocation) {
@@ -84,36 +89,16 @@ export default function AvailableOrders() {
 
       setAcceptedOrder(order)
       setArrived(false)
-      setHint("Usa las teclas ← → ↑ ↓ para moverte en el mapa")
-
-      // Remove from list
       setOrders(prev => prev.filter(o => o.id !== order.id))
     } catch (err) {
       alert("Error al aceptar el pedido")
-      console.error(err)
     }
   }
 
-  async function handleDecline(id) {
-    try {
-      await fetch(`https://lab-rappi-f8xt.vercel.app/api/orders/${id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "Creado" })
-      })
-      await loadOrders()
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  // Keyboard handler for movement
   const handleKeyDown = useCallback(async (e) => {
     if (!acceptedOrder || arrived) return
-
     const arrowKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]
     if (!arrowKeys.includes(e.key)) return
-
     e.preventDefault()
 
     const cur = positionRef.current
@@ -129,10 +114,7 @@ export default function AvailableOrders() {
     positionRef.current = newPos
 
     try {
-      // Update position on backend; backend checks ST_DWithin
       const result = await updateDeliveryPosition(acceptedOrder.id, newPos.lat, newPos.lng)
-
-      // Broadcast to consumer via Supabase Realtime
       await supabase.channel(`order:${acceptedOrder.id}`).send({
         type: "broadcast",
         event: "position_update",
@@ -145,7 +127,6 @@ export default function AvailableOrders() {
 
       if (result?.arrived) {
         setArrived(true)
-        setHint("🎉 ¡Llegaste al destino! El pedido ha sido marcado como Entregado.")
       }
     } catch (err) {
       console.error("Error updating position:", err)
@@ -159,141 +140,166 @@ export default function AvailableOrders() {
 
   const destPos = acceptedOrder ? parseGeoPoint(acceptedOrder.destination) : null
 
+  if (loading && !acceptedOrder) {
+    return (
+      <div className="empty">
+        <Loader2 className="empty-icon" style={{ animation: "spin 2s linear infinite" }} />
+        <p>Buscando pedidos disponibles…</p>
+      </div>
+    )
+  }
+
   return (
-    <div style={{ padding: 20, maxWidth: 900, margin: "0 auto" }}>
-      <h2>Pedidos disponibles</h2>
-
-      {/* If delivery person has accepted an order, show the map */}
-      {acceptedOrder ? (
+    <div>
+      <div className="page-header">
         <div>
-          <div style={{
-            background: arrived ? "#27ae60" : "#2980b9", color: "white",
-            padding: "12px 16px", borderRadius: 10, marginBottom: 16
-          }}>
-            {arrived
-              ? "🎉 ¡Pedido entregado!"
-              : `🛵 Entregando pedido #${acceptedOrder.id.slice(0, 8)}…`
-            }
-          </div>
-
-          {hint && (
-            <div style={{
-              background: "#f8f9fa", border: "1px solid #dee2e6",
-              borderRadius: 8, padding: "10px 14px", marginBottom: 12,
-              fontSize: 14, color: "#555"
-            }}>
-              ⌨️ {hint}
-            </div>
-          )}
-
-          {/* Keyboard controls legend */}
-          {!arrived && (
-            <div style={{
-              display: "grid", gridTemplateColumns: "repeat(3, 40px)", gap: 4,
-              marginBottom: 16, justifyContent: "start"
-            }}>
-              {["", "↑", "", "←", "↓", "→"].map((k, i) => (
-                <div key={i} style={{
-                  width: 36, height: 36, background: k ? "#fff" : "transparent",
-                  border: k ? "1px solid #ccc" : "none", borderRadius: 6,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 18, boxShadow: k ? "0 2px 4px rgba(0,0,0,0.1)" : "none"
-                }}>{k}</div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ height: 450, borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
-            <MapContainer
-              center={position ? [position.lat, position.lng] : [4.711, -74.0721]}
-              zoom={17}
-              style={{ height: "100%", width: "100%" }}
-              ref={mapRef}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='© <a href="https://www.openstreetmap.org">OpenStreetMap</a>'
-              />
-
-              {/* Delivery person marker */}
-              {position && (
-                <Marker position={[position.lat, position.lng]} icon={deliveryIcon}>
-                  <Popup>🛵 Tú estás aquí</Popup>
-                </Marker>
-              )}
-
-              {/* Destination marker */}
-              {destPos && (
-                <Marker position={[destPos.lat, destPos.lng]} icon={destinationIcon}>
-                  <Popup>📦 Punto de entrega</Popup>
-                </Marker>
-              )}
-            </MapContainer>
-          </div>
-
-          {position && (
-            <p style={{ fontSize: 12, color: "#999", marginTop: 6 }}>
-              Posición actual: {position.lat.toFixed(6)}, {position.lng.toFixed(6)}
-            </p>
-          )}
-
-          {!arrived && (
-            <button
-              onClick={() => { setAcceptedOrder(null); loadOrders() }}
-              style={{ background: "#e74c3c", width: "auto", marginTop: 10 }}
-            >
-              Abandonar pedido
-            </button>
-          )}
-          {arrived && (
-            <button
-              onClick={() => { setAcceptedOrder(null); setArrived(false); loadOrders() }}
-              style={{ background: "#27ae60", width: "auto", marginTop: 10 }}
-            >
-              Ver otros pedidos
-            </button>
-          )}
+          <h2>{acceptedOrder ? "Entrega en Curso" : "Pedidos Disponibles"}</h2>
+          <p style={{ marginTop: 4 }}>
+            {acceptedOrder ? `Lleva el pedido #${acceptedOrder.id.slice(0, 8)} a su destino` : "Acepta un pedido para comenzar a ganar"}
+          </p>
         </div>
-      ) : (
-        <>
-          {orders.length === 0 && (
-            <p style={{ color: "#666" }}>No hay pedidos disponibles en este momento.</p>
-          )}
+      </div>
 
-          {orders.map(o => (
-            <div key={o.id} style={{
-              background: "white", borderRadius: 10, padding: 16, marginBottom: 12,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+      {acceptedOrder ? (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 32 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <div className={`card ${arrived ? "card--accent" : ""}`} style={{ 
+              background: arrived ? "var(--green-lo)" : "var(--blue-lo)",
+              borderColor: arrived ? "var(--green)" : "var(--blue)",
+              display: "flex", alignItems: "center", gap: 16
             }}>
-              <p style={{ margin: 0, fontWeight: 600 }}>Pedido #{o.id.slice(0, 8)}…</p>
-              <p style={{ margin: "4px 0", fontSize: 13, color: "#666" }}>
-                {new Date(o.created_at).toLocaleString()}
-              </p>
-
-              {o.order_items?.map(item => (
-                <p key={item.id} style={{ margin: "2px 0", fontSize: 13 }}>
-                  {item.products?.name} x{item.quantity} — ${item.unit_price}
+              <div style={{ 
+                width: 40, height: 40, borderRadius: "50%", 
+                background: "white", display: "flex", alignItems: "center", justifyContent: "center",
+                color: arrived ? "var(--green)" : "var(--blue)"
+              }}>
+                {arrived ? <CheckCircle2 size={24} /> : <Navigation size={24} className="animate-pulse" />}
+              </div>
+              <div>
+                <h3 style={{ marginBottom: 0, color: arrived ? "var(--green)" : "var(--blue)" }}>
+                  {arrived ? "¡Pedido Entregado!" : "En camino al destino"}
+                </h3>
+                <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 2 }}>
+                  {arrived ? "Has completado la entrega con éxito." : "Usa las flechas del teclado para moverte."}
                 </p>
-              ))}
-
-              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                <button
-                  onClick={() => handleAccept(o)}
-                  style={{ width: "auto", background: "#27ae60", padding: "8px 16px" }}
-                >
-                  ✅ Aceptar
-                </button>
-                <button
-                  onClick={() => handleDecline(o.id)}
-                  style={{ width: "auto", background: "#e74c3c", padding: "8px 16px" }}
-                >
-                  ❌ Rechazar
-                </button>
               </div>
             </div>
-          ))}
-        </>
+
+            <div style={{ height: 500, borderRadius: "var(--radius)", overflow: "hidden", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
+              <MapContainer
+                center={position ? [position.lat, position.lng] : [4.711, -74.0721]}
+                zoom={17}
+                style={{ height: "100%", width: "100%" }}
+                ref={mapRef}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                />
+                {position && (
+                  <Marker position={[position.lat, position.lng]} icon={deliveryIcon}>
+                    <Popup>🛵 Tú</Popup>
+                  </Marker>
+                )}
+                {destPos && (
+                  <Marker position={[destPos.lat, destPos.lng]} icon={destinationIcon}>
+                    <Popup>🏠 Destino</Popup>
+                  </Marker>
+                )}
+              </MapContainer>
+            </div>
+          </div>
+
+          <div style={{ position: "sticky", top: 96 }}>
+            <div className="card">
+              <h3 style={{ marginBottom: 20 }}>Simulador de Movimiento</h3>
+              <div className="kbd-hints" style={{ marginBottom: 24 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, width: "fit-content", margin: "0 auto" }}>
+                  <div /> <kbd><ChevronUp size={16} /></kbd> <div />
+                  <kbd><ChevronLeft size={16} /></kbd> <kbd><ChevronDown size={16} /></kbd> <kbd><ChevronRight size={16} /></kbd>
+                </div>
+              </div>
+              
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 24, textAlign: "center" }}>
+                Usa las flechas para simular el desplazamiento del repartidor en el mapa.
+              </div>
+
+              {arrived ? (
+                <button
+                  onClick={() => { setAcceptedOrder(null); setArrived(false); loadOrders() }}
+                  className="btn-primary btn-block"
+                  style={{ background: "var(--green)", color: "white" }}
+                >
+                  <CheckCircle2 size={18} /> Finalizar y ver más
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setAcceptedOrder(null); loadOrders() }}
+                  className="btn-danger btn-block"
+                >
+                  <XCircle size={18} /> Abandonar pedido
+                </button>
+              )}
+            </div>
+
+            <div className="card" style={{ marginTop: 24, background: "var(--bg-2)" }}>
+              <h3 style={{ marginBottom: 12 }}>Detalles del Cliente</h3>
+              <div style={{ fontSize: 14, color: "var(--text-2)" }}>
+                <p><strong>Pedido:</strong> #{acceptedOrder.id.slice(0, 8)}</p>
+                <div style={{ marginTop: 12 }}>
+                  {acceptedOrder.order_items?.map(item => (
+                    <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 4 }}>
+                      <span>{item.quantity}x {item.products?.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid">
+          {orders.length === 0 ? (
+            <div className="empty" style={{ gridColumn: "1/-1" }}>
+              <Truck className="empty-icon" size={48} />
+              <p>No hay pedidos disponibles en este momento.</p>
+            </div>
+          ) : (
+            orders.map(o => (
+              <div key={o.id} className="card" style={{ display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>Pedido #{o.id.slice(0, 8)}</div>
+                    <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 4 }}>{new Date(o.created_at).toLocaleTimeString()}</div>
+                  </div>
+                  <div style={{ width: 40, height: 40, borderRadius: "var(--radius)", background: "var(--bg-2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}>
+                    <Package size={20} />
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, marginBottom: 20 }}>
+                  {o.order_items?.map(item => (
+                    <div key={item.id} style={{ fontSize: 14, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 600 }}>{item.quantity}x</span> {item.products?.name}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => handleAccept(o)} className="btn-primary btn-block">
+                    Aceptar
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       )}
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+      `}</style>
     </div>
   )
 }

@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useEffect, useState, useRef } from "react"
 import { useAuth } from "../../context/AuthContext"
-import { createOrder } from "../../services/api"
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet"
+import { getConsumerOrders } from "../../services/api"
+import { supabase } from "../../services/supabaseClient"
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
+import { Package, Map as MapIcon, Calendar, Clock, CheckCircle2, Truck, X, Loader2 } from "lucide-react"
 
-// Fix default leaflet icon paths broken by bundlers
+// Fix default icons
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
@@ -14,134 +15,240 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png"
 })
 
+const deliveryIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+})
+
 const destinationIcon = new L.Icon({
   iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
 })
 
-// Component that listens for map clicks
-function ClickHandler({ onMapClick }) {
-  useMapEvents({
-    click(e) {
-      onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng })
-    }
-  })
+function MapPanner({ center }) {
+  const map = useMap()
+  useEffect(() => {
+    if (center) map.panTo(center)
+  }, [center, map])
   return null
 }
 
-// Default center: Bogotá, Colombia
-const DEFAULT_CENTER = [4.711, -74.0721]
+function parseGeoPoint(geo) {
+  if (!geo) return null
+  if (typeof geo === "object" && geo.coordinates) {
+    return { lat: geo.coordinates[1], lng: geo.coordinates[0] }
+  }
+  if (typeof geo === "string") {
+    const match = geo.match(/POINT\(([^ ]+) ([^ )]+)\)/)
+    if (match) return { lat: parseFloat(match[2]), lng: parseFloat(match[1]) }
+  }
+  return null
+}
 
-export default function Cart() {
+export default function Orders() {
   const { user } = useAuth()
-  const navigate = useNavigate()
-  const [cart, setCart] = useState(null)
-  const [destination, setDestination] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [trackingOrder, setTrackingOrder] = useState(null)
+  const [deliveryPos, setDeliveryPos] = useState(null)
+  const [arrived, setArrived] = useState(false)
+  const channelRef = useRef(null)
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("cart"))
-    setCart(stored)
+    loadOrders()
   }, [])
 
-  function removeItem(id) {
-    const updated = { ...cart, items: cart.items.filter(i => i.id !== id) }
-    setCart(updated)
-    localStorage.setItem("cart", JSON.stringify(updated))
-  }
-
-  async function handleCreateOrder() {
-    if (!cart || cart.items.length === 0) return
-    if (!destination) {
-      alert("Por favor selecciona un punto de entrega en el mapa")
-      return
-    }
-
-    setLoading(true)
+  async function loadOrders() {
     try {
-      await createOrder(
-        user.id,
-        cart.storeId,
-        cart.items.map(i => ({ product_id: i.id, quantity: i.quantity, unit_price: i.price })),
-        destination
-      )
-      localStorage.removeItem("cart")
-      navigate("/orders")
-    } catch (err) {
-      alert("Error al crear el pedido")
-      console.error(err)
+      const data = await getConsumerOrders(user.id)
+      setOrders(Array.isArray(data) ? data : [])
     } finally {
       setLoading(false)
     }
   }
 
-  if (!cart || cart.items.length === 0) {
+  function startTracking(order) {
+    if (channelRef.current) supabase.removeChannel(channelRef.current)
+
+    setTrackingOrder(order)
+    setArrived(false)
+
+    const pos = parseGeoPoint(order.delivery_position)
+    setDeliveryPos(pos)
+
+    const channel = supabase.channel(`order:${order.id}`)
+    channel
+      .on("broadcast", { event: "position_update" }, (payload) => {
+        const { lat, lng, arrived: isArrived } = payload.payload
+        setDeliveryPos({ lat, lng })
+        if (isArrived) {
+          setArrived(true)
+          setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: "Entregado" } : o))
+          setTrackingOrder(prev => prev ? { ...prev, status: "Entregado" } : prev)
+        }
+      })
+      .subscribe()
+    channelRef.current = channel
+  }
+
+  function stopTracking() {
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current)
+      channelRef.current = null
+    }
+    setTrackingOrder(null)
+    setDeliveryPos(null)
+    setArrived(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (channelRef.current) supabase.removeChannel(channelRef.current)
+    }
+  }, [])
+
+  if (loading) {
     return (
-      <div className="container">
-        <h2>Tu carrito</h2>
-        <p>Tu carrito está vacío.</p>
+      <div className="empty">
+        <Loader2 className="empty-icon" style={{ animation: "spin 2s linear infinite" }} />
+        <p>Cargando tu historial de pedidos…</p>
       </div>
     )
   }
 
-  const total = cart.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
-
   return (
-    <div className="container" style={{ maxWidth: 700 }}>
-      <h2>Tu carrito</h2>
-
-      {cart.items.map(item => (
-        <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #eee" }}>
-          <span>{item.name} x{item.quantity} — ${item.price * item.quantity}</span>
-          <button onClick={() => removeItem(item.id)} style={{ width: "auto", background: "#ff3d3d" }}>Eliminar</button>
-        </div>
-      ))}
-
-      <p><strong>Total: ${total}</strong></p>
-
-      <hr />
-      <h3>📍 Selecciona el punto de entrega</h3>
-      <p style={{ color: "#666", fontSize: 14 }}>Haz clic en el mapa para indicar dónde quieres recibir tu pedido.</p>
-
-      {destination ? (
-        <p style={{ color: "green" }}>
-          Destino seleccionado: {destination.lat.toFixed(5)}, {destination.lng.toFixed(5)}
-        </p>
-      ) : (
-        <p style={{ color: "#e67e22" }}>Aún no has seleccionado un punto de entrega</p>
-      )}
-
-      <div style={{ height: 350, borderRadius: 10, overflow: "hidden", margin: "12px 0" }}>
-        <MapContainer
-          center={DEFAULT_CENTER}
-          zoom={13}
-          style={{ height: "100%", width: "100%" }}
-        >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='© <a href="https://www.openstreetmap.org">OpenStreetMap</a>'
-          />
-          <ClickHandler onMapClick={setDestination} />
-          {destination && (
-            <Marker
-              position={[destination.lat, destination.lng]}
-              icon={destinationIcon}
-            />
-          )}
-        </MapContainer>
+    <div>
+      <div className="page-header">
+        <h2>Mis Pedidos</h2>
       </div>
 
-      <button
-        onClick={handleCreateOrder}
-        disabled={loading || !destination}
-        style={{ background: destination ? "#ff3d3d" : "#ccc" }}
-      >
-        {loading ? "Creando pedido..." : "Crear pedido"}
-      </button>
+      {arrived && (
+        <div style={{
+          background: "var(--green-lo)", color: "var(--green)", padding: "16px",
+          borderRadius: "var(--radius)", marginBottom: 24, border: "1px solid rgba(16, 185, 129, 0.2)",
+          display: "flex", alignItems: "center", gap: 12
+        }}>
+          <CheckCircle2 size={20} />
+          <div style={{ fontWeight: 600 }}>🎉 ¡Tu repartidor ha llegado!</div>
+          <button onClick={() => setArrived(false)} className="nav-link" style={{ marginLeft: "auto", padding: 4 }}>
+            <X size={18} />
+          </button>
+        </div>
+      )}
+
+      {orders.length === 0 && (
+        <div className="empty">
+          <Package className="empty-icon" size={48} />
+          <p>Aún no has realizado ningún pedido.</p>
+          <button onClick={() => navigate("/stores")} className="btn-primary" style={{ marginTop: 24 }}>
+            Hacer mi primer pedido
+          </button>
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: trackingOrder ? "1fr 1fr" : "1fr", gap: 32 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {orders.map(o => (
+            <div key={o.id} className="card" style={{ 
+              borderLeft: `4px solid ${
+                o.status === "Entregado" ? "var(--green)" : 
+                o.status === "En entrega" ? "var(--blue)" : "var(--amber)"
+              }`
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Pedido #{o.id.slice(0, 8)}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, color: "var(--text-2)", fontSize: 13 }}>
+                    <Calendar size={14} /> {new Date(o.created_at).toLocaleDateString()}
+                    <Clock size={14} style={{ marginLeft: 8 }} /> {new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+                <span className={`badge ${
+                  o.status === "Entregado" ? "badge-entregado" : 
+                  o.status === "En entrega" ? "badge-entrega" : "badge-creado"
+                }`}>
+                  {o.status}
+                </span>
+              </div>
+
+              {o.status === "En entrega" && (
+                <button
+                  onClick={() => trackingOrder?.id === o.id ? stopTracking() : startTracking(o)}
+                  className={trackingOrder?.id === o.id ? "btn-danger btn-block" : "btn-primary btn-block"}
+                >
+                  {trackingOrder?.id === o.id ? (
+                    <>🛑 Detener seguimiento</>
+                  ) : (
+                    <>
+                      <MapIcon size={18} /> Ver seguimiento en vivo
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {trackingOrder && (
+          <div style={{ position: "sticky", top: 96, height: "calc(100vh - 128px)" }}>
+            <div className="card" style={{ height: "100%", display: "flex", flexDirection: "column", padding: 0, overflow: "hidden" }}>
+              <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)" }}>
+                <h3 style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+                  <Truck size={20} className="animate-pulse" /> Seguimiento en vivo
+                </h3>
+                <p style={{ fontSize: 12, color: "var(--text-3)" }}>Pedido #{trackingOrder.id.slice(0, 8)}</p>
+              </div>
+              
+              <div style={{ flex: 1 }}>
+                <MapContainer
+                  center={deliveryPos ? [deliveryPos.lat, deliveryPos.lng] : [4.711, -74.0721]}
+                  zoom={15}
+                  style={{ height: "100%", width: "100%" }}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  />
+                  {deliveryPos && (
+                    <>
+                      <MapPanner center={[deliveryPos.lat, deliveryPos.lng]} />
+                      <Marker position={[deliveryPos.lat, deliveryPos.lng]} icon={deliveryIcon}>
+                        <Popup>🛵 Tu repartidor está aquí</Popup>
+                      </Marker>
+                    </>
+                  )}
+                  {parseGeoPoint(trackingOrder.destination) && (
+                    <Marker
+                      position={[
+                        parseGeoPoint(trackingOrder.destination).lat,
+                        parseGeoPoint(trackingOrder.destination).lng
+                      ]}
+                      icon={destinationIcon}
+                    >
+                      <Popup>🏠 Punto de entrega</Popup>
+                    </Marker>
+                  )}
+                </MapContainer>
+              </div>
+
+              {!deliveryPos && (
+                <div style={{ padding: 16, textAlign: "center", color: "var(--amber)", fontSize: 13, background: "var(--amber-lo)" }}>
+                  ⏳ Esperando actualización de posición del repartidor…
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+      `}</style>
     </div>
   )
 }
