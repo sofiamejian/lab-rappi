@@ -85,11 +85,13 @@ export const getAvailableOrdersService = async () => {
 }
 
 export const getDeliveryOrdersService = async (deliveryId: string) => {
+  if (!deliveryId) throw Boom.badRequest("deliveryId is required")
+
   const { data, error } = await supabase
     .from("orders")
     .select("*, order_items(*, products(name))")
     .eq("delivery_id", deliveryId)
-    .eq("status", OrderStatus.EnEntrega)
+    .in("status", [OrderStatus.EnEntrega, "accepted"])
     .order("created_at", { ascending: false })
 
   if (error) throw Boom.badRequest(error.message)
@@ -111,7 +113,10 @@ export const updateOrderStatusService = async (
     .select()
     .single()
 
-  if (error) throw Boom.badRequest(error.message)
+  if (error) {
+    console.error("Error updating order status:", error)
+    throw Boom.badRequest(`Could not update order status: ${error.message}`)
+  }
   return data
 }
 

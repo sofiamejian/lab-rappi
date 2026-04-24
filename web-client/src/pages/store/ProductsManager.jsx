@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "../../context/AuthContext"
+import { API } from "../../services/api"
 import { Package, Trash2, Plus, Search, DollarSign, Loader2 } from "lucide-react"
-
-const API = "https://lab-rappi-f8xt.vercel.app/api"
 
 export default function ProductsManager() {
   const { user } = useAuth()

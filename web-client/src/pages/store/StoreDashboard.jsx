@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
+import { API } from "../../services/api"
 import { Store, ShoppingBag, Plus, ArrowRight, CheckCircle, Clock, Package, Loader2 } from "lucide-react"
-
-const API = "https://lab-rappi-f8xt.vercel.app/api"
 
 export default function StoreDashboard() {
   const { user } = useAuth()
@@ -108,24 +107,24 @@ export default function StoreDashboard() {
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <div style={{ 
                 width: 48, height: 48, borderRadius: "var(--radius)", 
-                background: store.is_open ? "var(--green-lo)" : "var(--bg-3)",
+                background: store?.is_open ? "var(--green-lo)" : "var(--bg-3)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                color: store.is_open ? "var(--green)" : "var(--text-3)"
+                color: store?.is_open ? "var(--green)" : "var(--text-3)"
               }}>
                 <Store size={24} />
               </div>
               <div>
-                <h3 style={{ marginBottom: 0 }}>{store.name}</h3>
+                <h3 style={{ marginBottom: 0 }}>{store?.name || "Cargando tienda..."}</h3>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: store.is_open ? "var(--green)" : "var(--text-3)" }}></div>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: store.is_open ? "var(--green)" : "var(--text-3)" }}>
-                    {store.is_open ? "Tienda abierta" : "Tienda cerrada"}
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: store?.is_open ? "var(--green)" : "var(--text-3)" }}></div>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: store?.is_open ? "var(--green)" : "var(--text-3)" }}>
+                    {store?.is_open ? "Tienda abierta" : "Tienda cerrada"}
                   </span>
                 </div>
               </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              {store.is_open ? (
+              {store?.is_open ? (
                 <button onClick={() => toggleStore(false)} className="btn-danger">
                   Cerrar tienda
                 </button>

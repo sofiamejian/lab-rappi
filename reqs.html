@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Lab 4 - Rappi Ecosystem: Real-time Delivery Tracking</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        color: #1a1a2e;
+        line-height: 1.7;
+        padding: 60px 80px;
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+      }
+
+      h1 {
+        font-size: 26px;
+        font-weight: 700;
+        color: #0077b6;
+        margin-bottom: 8px;
+        border-bottom: 3px solid #0077b6;
+        padding-bottom: 10px;
+      }
+
+      h2 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #0096c7;
+        margin-top: 36px;
+        margin-bottom: 12px;
+      }
+
+      h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #023e8a;
+        margin-top: 20px;
+        margin-bottom: 8px;
+      }
+
+      p {
+        margin-bottom: 12px;
+        font-size: 14px;
+      }
+
+      ul,
+      ol {
+        margin-left: 24px;
+        margin-bottom: 14px;
+      }
+
+      li {
+        font-size: 14px;
+        margin-bottom: 6px;
+      }
+
+      .context-box {
+        background: #f0f7ff;
+        border-left: 4px solid #0077b6;
+        padding: 16px 20px;
+        border-radius: 0 8px 8px 0;
+        margin: 16px 0;
+      }
+
+      .warning-box {
+        background: #fff8e1;
+        border-left: 4px solid #f9a825;
+        padding: 16px 20px;
+        border-radius: 0 8px 8px 0;
+        margin: 16px 0;
+      }
+
+      .warning-box::before {
+        content: "\26A0\FE0F ";
+      }
+
+      code {
+        font-family: "Fira Code", monospace;
+        background: #f1f3f5;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+
+      pre {
+        background: #1e1e2e;
+        color: #cdd6f4;
+        padding: 20px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 14px 0;
+        font-family: "Fira Code", monospace;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      pre .keyword {
+        color: #cba6f7;
+      }
+      pre .type {
+        color: #89b4fa;
+      }
+      pre .string {
+        color: #a6e3a1;
+      }
+      pre .comment {
+        color: #6c7086;
+        font-style: italic;
+      }
+      pre .number {
+        color: #fab387;
+      }
+      pre .function {
+        color: #89dceb;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 14px 0;
+        font-size: 13px;
+      }
+
+      table th {
+        background: #0077b6;
+        color: white;
+        padding: 10px 14px;
+        text-align: left;
+        font-weight: 600;
+      }
+
+      table td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      table tr:nth-child(even) {
+        background: #f8f9fa;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .badge-created {
+        background: #e3f2fd;
+        color: #1565c0;
+      }
+      .badge-delivery {
+        background: #fff3e0;
+        color: #e65100;
+      }
+      .badge-done {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+
+      .criteria-table td:first-child {
+        width: 40px;
+        text-align: center;
+        font-weight: 700;
+        color: #0077b6;
+      }
+
+      .diagram-box {
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 24px;
+        margin: 16px 0;
+        background: #fafafa;
+      }
+
+      .entity {
+        border: 2px solid #333;
+        display: inline-block;
+        margin: 8px;
+        min-width: 240px;
+        vertical-align: top;
+      }
+
+      .entity-header {
+        background: #fff9c4;
+        padding: 8px 14px;
+        font-weight: 700;
+        font-size: 14px;
+        border-bottom: 2px solid #333;
+        text-align: center;
+      }
+
+      .entity-body {
+        padding: 8px 14px;
+        font-size: 13px;
+        font-family: "Fira Code", monospace;
+      }
+
+      .entity-body div {
+        padding: 2px 0;
+      }
+
+      .pk::before {
+        content: "PK ";
+        font-weight: 700;
+        color: #0077b6;
+      }
+      .fk::before {
+        content: "FK ";
+        font-weight: 700;
+        color: #e65100;
+      }
+      .new-field {
+        background: #e8f5e9;
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+
+      .delivery-date {
+        font-size: 22px;
+        font-weight: 700;
+        color: #d32f2f;
+        margin-top: 8px;
+      }
+
+      .page-break {
+        page-break-before: always;
+        margin-top: 40px;
+      }
+
+      .tech-stack {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 12px 0;
+      }
+
+      .tech-tag {
+        background: #e3f2fd;
+        color: #0d47a1;
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      @media print {
+        body {
+          padding: 40px 50px;
+        }
+        .page-break {
+          page-break-before: always;
+        }
+        pre {
+          font-size: 11px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Lab 4 &mdash; Rappi Ecosystem: Real-time Delivery Tracking</h1>
+
+    <!-- ===== 1. CONTEXT ===== -->
+    <h2>1. Contexto</h2>
+
+    <p>
+      En este laboratorio, continuaremos con el ecosistema inspirado en Rappi
+      desarrollado en el Lab 3. El objetivo es extender el sistema agregando
+      <strong>seguimiento en tiempo real de entregas</strong>
+      utilizando mapas interactivos, geolocalización y comunicación en tiempo
+      real mediante
+      <strong>Supabase Realtime (Broadcast)</strong>.
+    </p>
+
+    <p>
+      El sistema ya cuenta con un backend (Express + TypeScript), tres clientes
+      web independientes (Consumer App, Store App, Delivery App) construidos con
+      React + Vite, una base de datos relacional en Supabase y deploy en Vercel.
+    </p>
+
+    <div class="context-box">
+      <strong>Nuevas tecnologías a integrar:</strong>
+      <div class="tech-stack">
+        <span class="tech-tag">Leaflet / React-Leaflet</span>
+        <span class="tech-tag">PostGIS (GEOGRAPHY)</span>
+        <span class="tech-tag">Supabase Realtime (Broadcast)</span>
+        <span class="tech-tag">KeyboardEvent API</span>
+      </div>
+    </div>
+
+    <!-- ===== 2. FUNCTIONAL REQUIREMENTS ===== -->
+    <h2>2. Requerimientos Funcionales</h2>
+
+    <h3>2.1 Delivery App (Rappi)</h3>
+    <ul>
+      <li>
+        Cuando un repartidor <strong>acepte un pedido</strong>, el sistema debe
+        mostrar un <strong>mapa interactivo</strong> con la posición actual del
+        repartidor y el punto de recogida del pedido (tienda).
+      </li>
+      <li>
+        El repartidor debe poder <strong>moverse en el mapa</strong> utilizando
+        las teclas del teclado:
+        <ul>
+          <li>
+            <code>ArrowUp</code> &mdash; mover hacia arriba (incrementar
+            latitud)
+          </li>
+          <li>
+            <code>ArrowDown</code> &mdash; mover hacia abajo (decrementar
+            latitud)
+          </li>
+          <li>
+            <code>ArrowLeft</code> &mdash; mover hacia la izquierda (decrementar
+            longitud)
+          </li>
+          <li>
+            <code>ArrowRight</code> &mdash; mover hacia la derecha (incrementar
+            longitud)
+          </li>
+        </ul>
+      </li>
+      <li>
+        Cada movimiento debe <strong>actualizar la posición</strong> del
+        repartidor en la base de datos y
+        <strong>emitir un evento en tiempo real</strong> vía Supabase Broadcast
+        para que el consumidor vea el movimiento.
+      </li>
+      <li>
+        Cuando el repartidor se encuentre a
+        <strong>menos de 5 metros</strong> del lugar de recogida, el sistema
+        debe cambiar el estado del pedido a
+        <span class="badge badge-done">"Entregado"</span>
+        y notificar al consumidor.
+      </li>
+    </ul>
+
+    <h3>2.2 Consumer App</h3>
+    <ul>
+      <li>
+        Al crear un pedido, el consumidor debe poder
+        <strong>seleccionar una ubicación de entrega</strong>
+        en el mapa (click en el mapa para definir el punto).
+      </li>
+      <li>
+        Cuando un repartidor acepte su pedido, el consumidor debe ver un
+        <strong>mapa en tiempo real</strong>
+        con la posición del repartidor actualizándose en vivo.
+      </li>
+      <li>
+        Cuando el repartidor llegue (distancia &lt; 5 metros), el consumidor
+        debe recibir una
+        <strong>notificación visual</strong> indicando que el repartidor ha
+        llegado.
+      </li>
+    </ul>
+
+    <h3>2.3 Store App</h3>
+    <ul>
+      <li>
+        La tienda debe poder ver el <strong>estado actualizado</strong> de sus
+        pedidos: <span class="badge badge-created">Creado</span>,
+        <span class="badge badge-delivery">En entrega</span>,
+        <span class="badge badge-done">Entregado</span>.
+      </li>
+    </ul>
+
+    <!-- ===== 3. NON-FUNCTIONAL ===== -->
+    <h2>3. Requerimientos No Funcionales</h2>
+    <ul>
+      <li>
+        Se debe mantener la arquitectura de
+        <strong>3 clientes web independientes + 1 backend</strong>.
+      </li>
+      <li>El backend debe exponer una <strong>API REST</strong>.</li>
+      <li>
+        La comunicación en tiempo real debe usar
+        <strong>Supabase Realtime (Broadcast)</strong>.
+      </li>
+      <li>
+        Los datos geoespaciales deben almacenarse usando el tipo
+        <strong>GEOGRAPHY(POINT, 4326)</strong> de PostGIS.
+      </li>
+      <li>
+        Los estados del pedido deben definirse como un
+        <strong>enum en TypeScript</strong>.
+      </li>
+      <li>
+        El cálculo de distancia debe realizarse con
+        <strong>ST_DWithin</strong> de PostGIS.
+      </li>
+    </ul>
+
+    <!-- ===== 4. DATA MODEL ===== -->
+    <h2 class="page-break">4. Modelo de Datos</h2>
+
+    <p>
+      Se deben agregar las siguientes columnas a la tabla <code>orders</code>:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Columna</th>
+          <th>Tipo</th>
+          <th>Restricción</th>
+          <th>Descripción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>status</code></td>
+          <td><code>TEXT</code></td>
+          <td>NOT NULL, DEFAULT 'Creado'</td>
+          <td>Estado actual del pedido</td>
+        </tr>
+        <tr>
+          <td><code>delivery_position</code></td>
+          <td><code>GEOGRAPHY(POINT, 4326)</code></td>
+          <td>NULL</td>
+          <td>Posición actual del repartidor</td>
+        </tr>
+        <tr>
+          <td><code>destination</code></td>
+          <td><code>GEOGRAPHY(POINT, 4326)</code></td>
+          <td>NOT NULL</td>
+          <td>Punto de entrega seleccionado por el consumidor</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>4.1 Habilitar PostGIS en Supabase</h3>
+    <p>
+      PostGIS viene preinstalado en Supabase. Solo es necesario habilitarlo:
+    </p>
+
+    <pre><span class="comment">-- Habilitar la extensión PostGIS (ejecutar una sola vez)</span>
+<span class="keyword">CREATE EXTENSION IF NOT EXISTS</span> postgis;</pre>
+
+    <h3>4.2 SQL para agregar las nuevas columnas</h3>
+
+    <pre><span class="comment">-- Agregar columna de estado con valor por defecto</span>
+<span class="keyword">ALTER TABLE</span> orders
+<span class="keyword">ADD COLUMN</span> status <span class="type">TEXT</span> <span class="keyword">NOT NULL DEFAULT</span> <span class="string">'Creado'</span>;
+
+<span class="comment">-- Agregar columna de posición del repartidor (se actualiza en cada movimiento)</span>
+<span class="keyword">ALTER TABLE</span> orders
+<span class="keyword">ADD COLUMN</span> delivery_position <span class="type">GEOGRAPHY(POINT, 4326)</span>;
+
+<span class="comment">-- Agregar columna de destino (punto de entrega del consumidor)</span>
+<span class="keyword">ALTER TABLE</span> orders
+<span class="keyword">ADD COLUMN</span> destination <span class="type">GEOGRAPHY(POINT, 4326)</span> <span class="keyword">NOT NULL</span>;</pre>
+
+    <h3>4.3 Entendiendo GEOGRAPHY(POINT, 4326)</h3>
+
+    <div class="context-box">
+      <p>
+        <strong>GEOGRAPHY(POINT, 4326)</strong> es un tipo de dato de PostGIS
+        para almacenar coordenadas geográficas:
+      </p>
+      <ul>
+        <li>
+          <strong>POINT</strong> = un punto con coordenadas
+          <code>(longitud, latitud)</code>
+        </li>
+        <li>
+          <strong>4326</strong> = sistema de coordenadas estándar GPS
+          (<strong>WGS84</strong>), el mismo que usa Google Maps, Leaflet, etc.
+        </li>
+      </ul>
+    </div>
+
+    <div class="warning-box">
+      <strong>Orden importante:</strong> PostGIS usa el orden
+      <code>(longitud, latitud)</code>, NO <code>(latitud, longitud)</code>.
+      <br />
+      Por ejemplo, para Cali, Colombia:
+      <code>ST_MakePoint(-76.53, 3.45)</code> donde <code>-76.53</code> es la
+      longitud y <code>3.45</code> es la latitud.
+    </div>
+
+    <h3>4.4 Insertar un punto geográfico</h3>
+
+    <pre><span class="comment">-- Insertar una ubicación como GEOGRAPHY</span>
+<span class="keyword">INSERT INTO</span> orders (id, consumer_id, store_id, status, destination)
+<span class="keyword">VALUES</span> (
+  gen_random_uuid(),
+  <span class="string">'uuid-consumer'</span>,
+  <span class="string">'uuid-store'</span>,
+  <span class="string">'Creado'</span>,
+  <span class="function">ST_SetSRID</span>(<span class="function">ST_MakePoint</span>(<span class="number">-76.53</span>, <span class="number">3.45</span>), <span class="number">4326</span>)
+);</pre>
+
+    <h3>4.5 Actualizar la posición del repartidor</h3>
+
+    <pre><span class="comment">-- Actualizar posición del repartidor en cada movimiento</span>
+<span class="keyword">UPDATE</span> orders
+<span class="keyword">SET</span> delivery_position = <span class="function">ST_SetSRID</span>(<span class="function">ST_MakePoint</span>(<span class="number">-76.532</span>, <span class="number">3.451</span>), <span class="number">4326</span>)
+<span class="keyword">WHERE</span> id = <span class="string">'uuid-order'</span>;</pre>
+
+    <h3>4.6 Consultar por cercanía (distancia en metros)</h3>
+
+    <pre><span class="comment">-- Verificar si el repartidor está a menos de 5 metros del destino</span>
+<span class="keyword">SELECT</span>
+  id,
+  <span class="function">ST_Distance</span>(delivery_position, destination) <span class="keyword">AS</span> distance_meters
+<span class="keyword">FROM</span> orders
+<span class="keyword">WHERE</span> id = <span class="string">'uuid-order'</span>
+  <span class="keyword">AND</span> <span class="function">ST_DWithin</span>(
+    delivery_position,
+    destination,
+    <span class="number">5</span>  <span class="comment">-- distancia en metros</span>
+  );</pre>
+
+    <p>
+      <code>ST_DWithin</code> retorna <code>true</code> si la distancia entre
+      dos puntos geográficos es menor o igual al valor dado en metros. Esto es
+      lo que usaremos para detectar la llegada del repartidor.
+    </p>
+
+    <h3>4.7 Ejemplo general de consulta por cercanía</h3>
+
+    <pre><span class="comment">-- Buscar registros dentro de un radio de 1000 metros</span>
+<span class="keyword">SELECT</span> *
+<span class="keyword">FROM</span> lugares
+<span class="keyword">WHERE</span> <span class="function">ST_DWithin</span>(
+  ubicacion,
+  <span class="function">ST_SetSRID</span>(<span class="function">ST_MakePoint</span>(<span class="number">-76.53</span>, <span class="number">3.45</span>), <span class="number">4326</span>),
+  <span class="number">1000</span>  <span class="comment">-- distancia en metros</span>
+);</pre>
+
+    <!-- ===== 5. ENUM ===== -->
+    <h2>5. Enum de Estados del Pedido</h2>
+
+    <p>
+      Los estados del pedido deben ser definidos como un <code>enum</code> en
+      TypeScript y utilizarse tanto en el backend como en la validación:
+    </p>
+
+    <pre><span class="keyword">enum</span> <span class="type">OrderStatus</span> {
+  <span class="string">CREATED</span>    = <span class="string">"Creado"</span>,
+  <span class="string">IN_DELIVERY</span> = <span class="string">"En entrega"</span>,
+  <span class="string">DELIVERED</span>  = <span class="string">"Entregado"</span>,
+}</pre>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Estado</th>
+          <th>Cuándo se asigna</th>
+          <th>Quién lo cambia</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-created">Creado</span></td>
+          <td>Cuando el consumidor crea el pedido</td>
+          <td>Sistema (automático)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-delivery">En entrega</span></td>
+          <td>Cuando un repartidor acepta el pedido</td>
+          <td>Repartidor</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-done">Entregado</span></td>
+          <td>Cuando el repartidor llega al destino (&lt; 5 metros)</td>
+          <td>Sistema (automático)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ===== 6. ARCHITECTURE ===== -->
+    <h2 class="page-break">6. Arquitectura Sugerida</h2>
+
+    <h3>6.1 Endpoints sugeridos (nuevos o modificados)</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Método</th>
+          <th>Ruta</th>
+          <th>Descripción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>POST</code></td>
+          <td><code>/api/orders</code></td>
+          <td>Crear pedido con coordenada de destino</td>
+        </tr>
+        <tr>
+          <td><code>PATCH</code></td>
+          <td><code>/api/orders/:id/accept</code></td>
+          <td>Repartidor acepta pedido (status &rarr; "En entrega")</td>
+        </tr>
+        <tr>
+          <td><code>PATCH</code></td>
+          <td><code>/api/orders/:id/position</code></td>
+          <td>Actualizar posición del repartidor</td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/api/orders/:id</code></td>
+          <td>Obtener detalle del pedido (incluye posición y estado)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>6.2 Flujo de tiempo real con Supabase Broadcast</h3>
+
+    <pre><span class="comment">// Delivery App: emitir posición al mover con teclas</span>
+<span class="keyword">const</span> channel = supabase.channel(<span class="string">`order:<span class="number">${orderId}</span>`</span>);
+
+channel.send({
+  <span class="string">type</span>: <span class="string">'broadcast'</span>,
+  <span class="string">event</span>: <span class="string">'position-update'</span>,
+  <span class="string">payload</span>: { <span class="string">lat</span>: <span class="number">3.451</span>, <span class="string">lng</span>: <span class="number">-76.532</span> }
+});
+
+<span class="comment">// Consumer App: escuchar posición en tiempo real</span>
+<span class="keyword">const</span> channel = supabase.channel(<span class="string">`order:<span class="number">${orderId}</span>`</span>);
+
+channel.on(<span class="string">'broadcast'</span>, { <span class="string">event</span>: <span class="string">'position-update'</span> }, (payload) => {
+  <span class="comment">// Actualizar marcador del repartidor en el mapa</span>
+  setDeliveryPosition(payload.payload);
+}).subscribe();</pre>
+
+    <h3>6.3 Manejo de teclas con throttle (Delivery App)</h3>
+
+    <p>
+      El movimiento visual en el mapa debe ser
+      <strong>inmediato</strong> (actualiza el estado local al instante), pero
+      el PATCH a la base de datos debe hacerse con un
+      <strong>throttle de 1 segundo</strong>: sin importar cuántas teclas se
+      presionen, la API se llama como máximo una vez por segundo con la posición
+      más reciente.
+    </p>
+
+    <pre><span class="keyword">const</span> STEP = <span class="number">0.00005</span>; <span class="comment">// ~5 metros aprox.</span>
+
+<span class="comment">// useRef para el throttle: guarda si ya hay una llamada programada</span>
+<span class="keyword">const</span> throttleRef = useRef&lt;<span class="type">ReturnType&lt;typeof setTimeout&gt;</span> | <span class="keyword">null</span>&gt;(<span class="keyword">null</span>);
+<span class="comment">// useRef para capturar siempre la posición más reciente dentro del timeout</span>
+<span class="keyword">const</span> pendingPosition = useRef(position);
+
+useEffect(() => {
+  <span class="keyword">const</span> handleKeyDown = (e: <span class="type">KeyboardEvent</span>) => {
+    <span class="keyword">let</span> { lat, lng } = position;
+
+    <span class="keyword">switch</span> (e.key) {
+      <span class="keyword">case</span> <span class="string">'ArrowUp'</span>:    lat += STEP; <span class="keyword">break</span>;
+      <span class="keyword">case</span> <span class="string">'ArrowDown'</span>:  lat -= STEP; <span class="keyword">break</span>;
+      <span class="keyword">case</span> <span class="string">'ArrowLeft'</span>:  lng -= STEP; <span class="keyword">break</span>;
+      <span class="keyword">case</span> <span class="string">'ArrowRight'</span>: lng += STEP; <span class="keyword">break</span>;
+      <span class="keyword">default</span>: <span class="keyword">return</span>;
+    }
+
+    <span class="comment">// 1. Mover el marcador en el mapa de inmediato</span>
+    setPosition({ lat, lng });
+    pendingPosition.current = { lat, lng };
+
+    <span class="comment">// 2. Si ya hay un ciclo de 1 seg activo, no hacer nada más</span>
+    <span class="keyword">if</span> (throttleRef.current) <span class="keyword">return</span>;
+
+    <span class="comment">// 3. Abrir un nuevo ciclo: esperar 1 seg y luego enviar la posición más reciente</span>
+    throttleRef.current = setTimeout(() => {
+      updatePosition(pendingPosition.current); <span class="comment">// API call + broadcast</span>
+      throttleRef.current = <span class="keyword">null</span>; <span class="comment">// liberar para el siguiente ciclo</span>
+    }, <span class="number">1000</span>);
+  };
+
+  window.addEventListener(<span class="string">'keydown'</span>, handleKeyDown);
+  <span class="keyword">return</span> () => {
+    window.removeEventListener(<span class="string">'keydown'</span>, handleKeyDown);
+    <span class="keyword">if</span> (throttleRef.current) clearTimeout(throttleRef.current);
+  };
+}, [position]);</pre>
+
+    <div class="context-box">
+      <strong>Debounce vs Throttle</strong><br />
+      <ul style="margin: 8px 0 0 20px; font-size: 14px">
+        <li>
+          <strong>Debounce:</strong> espera a que el usuario
+          <em>deje de presionar</em> para disparar. Si sigue moviéndose
+          indefinidamente, la llamada nunca se hace.
+        </li>
+        <li>
+          <strong>Throttle:</strong> dispara una vez por intervalo de tiempo
+          fijo, sin importar cuántas teclas se presionen. Ideal para movimiento
+          continuo.
+        </li>
+      </ul>
+      <br />
+      <code>pendingPosition</code> es un <code>useRef</code> para que el
+      <code>setTimeout</code>
+      siempre lea la coordenada más reciente al dispararse, evitando el problema
+      de
+      <em>stale closure</em>.
+    </div>
+
+    <!-- ===== 7. DELIVERABLES ===== -->
+    <h2>7. Entregables</h2>
+    <ul>
+      <li>
+        Base de datos actualizada con las nuevas columnas (<code>status</code>,
+        <code>delivery_position</code>, <code>destination</code>).
+      </li>
+      <li>API REST funcional con los nuevos endpoints.</li>
+      <li>
+        Tres clientes web funcionales con la nueva funcionalidad de mapas y
+        tracking.
+      </li>
+      <li>Repositorio(s) en GitHub.</li>
+      <li>Video explicando decisiones arquitectónicas y retos encontrados.</li>
+    </ul>
+
+    <!-- ===== 8. ACCEPTANCE CRITERIA ===== -->
+    <h2 class="page-break">8. Criterios de Aceptación</h2>
+
+    <p>
+      Se evaluarán los siguientes criterios. Cada uno debe estar completamente
+      funcional para obtener el puntaje correspondiente:
+    </p>
+
+    <table class="criteria-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Criterio</th>
+          <th>Descripción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><strong>Columnas en la base de datos</strong></td>
+          <td>
+            La tabla <code>orders</code> tiene las columnas
+            <code>status</code> (TEXT, default "Creado"),
+            <code>delivery_position</code> (GEOGRAPHY) y
+            <code>destination</code> (GEOGRAPHY) correctamente creadas con
+            PostGIS habilitado.
+          </td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><strong>Enum de estados en TypeScript</strong></td>
+          <td>
+            Existe un <code>enum OrderStatus</code> con los valores "Creado",
+            "En entrega" y "Entregado". Se utiliza en el backend para validar y
+            asignar estados.
+          </td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><strong>Selección de destino en mapa (Consumer)</strong></td>
+          <td>
+            El consumidor puede hacer click en un mapa para seleccionar el punto
+            de entrega al momento de crear un pedido. Las coordenadas se envían
+            al backend.
+          </td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><strong>Aceptar pedido (Delivery)</strong></td>
+          <td>
+            El repartidor puede aceptar un pedido. Al hacerlo, el estado cambia
+            a "En entrega", se asigna el <code>deliveryId</code> y se muestra el
+            mapa con el destino y su posición.
+          </td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td><strong>Movimiento con teclas del teclado</strong></td>
+          <td>
+            El repartidor se mueve en el mapa usando las teclas
+            <code>ArrowUp</code>, <code>ArrowDown</code>,
+            <code>ArrowLeft</code>, <code>ArrowRight</code>. Cada movimiento
+            actualiza su marcador visualmente.
+          </td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td><strong>Persistencia de posición</strong></td>
+          <td>
+            Cada movimiento del repartidor actualiza la columna
+            <code>delivery_position</code>
+            en la base de datos mediante un endpoint del API.
+          </td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td><strong>Tracking en tiempo real (Consumer)</strong></td>
+          <td>
+            El consumidor ve la posición del repartidor actualizarse en el mapa
+            en tiempo real mediante Supabase Broadcast, sin necesidad de
+            refrescar la página.
+          </td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td><strong>Detección de llegada (&lt; 5 metros)</strong></td>
+          <td>
+            El sistema detecta cuando el repartidor está a menos de 5 metros del
+            destino utilizando <code>ST_DWithin</code>. El estado cambia
+            automáticamente a "Entregado".
+          </td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td><strong>Notificación de llegada</strong></td>
+          <td>
+            El consumidor recibe una notificación visual (toast, modal, alerta)
+            cuando el repartidor llega al destino.
+          </td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td><strong>Visualización de estados (Store)</strong></td>
+          <td>
+            La tienda puede ver el estado actual de cada pedido con los badges
+            correspondientes (Creado, En entrega, Entregado) actualizándose en
+            tiempo real.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ===== 9. DELIVERY DATE ===== -->
+    <h2>9. Fecha de Entrega</h2>
+    <p class="delivery-date">Abril 24 de 2026</p>
+    <p>Medio de entrega: Intu</p>
+  </body>
+</html>

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
 import { getMyDeliveries } from "../../services/api"
-import { Package, Calendar, Clock, CheckCircle2, ShoppingBag, Loader2 } from "lucide-react"
+import { Package, Calendar, Clock, CheckCircle2, ShoppingBag, Loader2, MapPin } from "lucide-react"
 
 export default function MyOrders() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -69,6 +71,18 @@ export default function MyOrders() {
                   {o.status}
                 </span>
               </div>
+
+              {o.status === "En entrega" && (
+                <button 
+                  onClick={() => navigate("/delivery")}
+                  style={{ 
+                    marginBottom: 16, width: "auto", display: "flex", alignItems: "center", gap: 8,
+                    background: "var(--blue)", color: "white", padding: "8px 16px", fontSize: 13
+                  }}
+                >
+                  <MapPin size={16} /> Continuar Entrega
+                </button>
+              )}
 
               {o.order_items && o.order_items.length > 0 && (
                 <div style={{ background: "var(--bg-2)", borderRadius: "var(--radius-sm)", padding: 12 }}>

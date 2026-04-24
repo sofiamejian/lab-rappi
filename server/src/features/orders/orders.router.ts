@@ -20,5 +20,6 @@ router.get("/store/:storeId", getStoreOrdersController)           // store: inco
 router.get("/delivery/:deliveryId", getDeliveryOrdersController)  // delivery: their accepted orders
 router.get("/:id", getOrderByIdController)                        // get single order
 
-router.patch("/:id/status", updateOrderStatusController)          // accept / decline / delivered
+router.patch("/:id/status", updateOrderStatusController)          // general status update
+router.patch("/:id/accept", updateOrderStatusController)          // specific accept endpoint (shares logic or can be separate)
 router.patch("/:id/position", updateDeliveryPositionController)   // update delivery GPS position
